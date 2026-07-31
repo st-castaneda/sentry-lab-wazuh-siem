@@ -10,26 +10,22 @@ Agent version is pinned to `4.9.2-1` to match the manager exactly. Wazuh strictl
 
 ```powershell
 Invoke-WebRequest -Uri https://packages.wazuh.com/4.x/windows/wazuh-agent-4.9.2-1.msi -OutFile wazuh-agent.msi
-msiexec.exe /i wazuh-agent.msi /q WAZUH_MANAGER="192.168.1.60"
+msiexec.exe /i wazuh-agent.msi /q WAZUH_MANAGER="<WAZUH-MANAGER-IP>"
 NET START WazuhSvc
 ```
 
 ## Verification
 
 Check the agent log to confirm it registered and connected successfully:
-
 ```powershell
 Get-Content "C:\Program Files (x86)\ossec-agent\ossec.log" -Tail 30
 ```
-
 Look for:
-
 ```
-wazuh-agent: INFO: (4102): Connected to the server ([192.168.1.60]:1514/tcp).
+wazuh-agent: INFO: (4102): Connected to the server ([<WAZUH-MANAGER-IP>]:1514/tcp).
 ```
 
 Confirm on the manager side too, via the dashboard **Endpoints** view or the CLI:
-
 ```bash
 sudo /var/ossec/bin/manage_agents
 ```
@@ -44,13 +40,11 @@ sudo /var/ossec/bin/manage_agents
 ## Re-enrollment after a hostname change
 
 If a Windows agent's hostname changes (e.g. renaming the machine), the existing agent **does not** automatically re-register under the new name — it keeps reconnecting using its existing `client.keys`, which ties it to the original registration. To force a clean re-registration under a new hostname:
-
 ```powershell
 Stop-Service WazuhSvc
 Remove-Item "C:\Program Files (x86)\ossec-agent\client.keys" -Force
 Start-Service WazuhSvc
 ```
-
 The stale entry under the old name must also be removed manager-side (`manage_agents` → `R`) or the new registration will fail with a `Duplicate agent name` error, since Wazuh does not allow two agents to share a hostname.
 
 **Important:** confirm the OS-level hostname change actually completed (and survived a reboot) before doing any of the above — a rename command reporting success does not guarantee the change took effect until the machine has been rebooted and `hostname` reflects the new name.
