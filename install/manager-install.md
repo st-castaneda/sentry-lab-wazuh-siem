@@ -1,19 +1,17 @@
 # Wazuh Manager Install — All-in-One (Manager + Indexer + Dashboard)
 
-Installed on a dedicated Ubuntu Server VM (`wazuh-manager`, 192.168.1.60), separate from the Active Directory domain.
+Installed on a dedicated Ubuntu Server VM (`wazuh-manager`), separate from the Active Directory domain.
 
 ## 1. Pre-install decisions
 
-**DNS:** Configured to resolve via OPNsense (192.168.1.1) rather than the AD DC. This VM isn't domain-joined, so there's no reason to create a dependency on the DC's uptime just for name resolution — if the DC is powered off (common in this lab's profile-based power-on approach), the manager stays reachable regardless.
+**DNS:** Configured to resolve via the LAN firewall/gateway rather than the AD DC. This VM isn't domain-joined, so there's no reason to create a dependency on the DC's uptime just for name resolution — if the DC is powered off (common in this lab's profile-based power-on approach), the manager stays reachable regardless.
 
 **Vulnerability-detection module:** Disabled in `ossec.conf` *before* the first run:
-
 ```xml
 <vulnerability-detection>
   <enabled>no</enabled>
 </vulnerability-detection>
 ```
-
 This was a lesson learned the hard way on a prior build — the module re-fetches the full CVE feed on an hourly schedule with no cleanup of old feed data, which filled the disk (`/var/ossec/queue/vd*` ballooned to ~32GB). Disabling it up front avoids rebuilding the manager from scratch a second time.
 
 ## 2. Installation
@@ -21,7 +19,7 @@ This was a lesson learned the hard way on a prior build — the module re-fetche
 Followed the official Wazuh all-in-one quickstart script for v4.9.2 (manager + indexer + dashboard on a single node). Key install-time notes:
 
 - Auto-generated admin credentials were saved directly into a password manager rather than simplified — good credential hygiene is itself worth demonstrating, not just doing.
-- Confirmed the dashboard was reachable at `https://192.168.1.60` post-install before moving on to agent enrollment.
+- Confirmed the dashboard was reachable at `https://<WAZUH-MANAGER-IP>` post-install before moving on to agent enrollment.
 
 ## 3. Post-install hardening / cleanup
 
@@ -36,7 +34,7 @@ Followed the official Wazuh all-in-one quickstart script for v4.9.2 (manager + i
 
 ## 4. Verification
 
-- Confirmed live from the Proxmox host: `qm agent 106 ping` → clean response.
+- Confirmed live from the Proxmox host: `qm agent <VMID> ping` → clean response.
 - Snapshot taken at this known-good state before beginning agent enrollment.
 
 ## Why it worked
