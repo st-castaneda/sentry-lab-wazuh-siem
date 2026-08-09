@@ -8,7 +8,7 @@ Same rule as the Windows agents: pin to `wazuh-agent-4.9.2-1`, not the repo's de
 
 ```bash
 curl -o wazuh-agent.rpm https://packages.wazuh.com/4.x/yum/wazuh-agent-4.9.2-1.x86_64.rpm
-WAZUH_MANAGER="192.168.1.60" rpm -ihv wazuh-agent.rpm
+WAZUH_MANAGER="<WAZUH-MANAGER-IP>" rpm -ihv wazuh-agent.rpm
 systemctl daemon-reload
 systemctl enable wazuh-agent
 systemctl start wazuh-agent
@@ -20,15 +20,12 @@ systemctl start wazuh-agent
 systemctl status wazuh-agent
 tail -f /var/ossec/logs/ossec.log
 ```
-
 Confirm a line similar to:
-
 ```
-wazuh-agent: INFO: (4102): Connected to the server ([192.168.1.60]:1514/tcp).
+wazuh-agent: INFO: (4102): Connected to the server ([<WAZUH-MANAGER-IP>]:1514/tcp).
 ```
 
 On the manager side:
-
 ```bash
 sudo /var/ossec/bin/manage_agents
 ```
@@ -38,4 +35,4 @@ sudo /var/ossec/bin/manage_agents
 
 - Rocky was later rebuilt headless (2GB RAM, minimal ISO install) as part of a broader lab decision to keep this VM lean — the agent reinstall after rebuild followed the same steps above with a fresh enrollment.
 - `Disconnected` status in the dashboard for this agent is expected and normal whenever the Rocky VM itself is powered off — it reflects live connectivity, not a broken enrollment. No action needed when this VM isn't part of the day's active profile.
-- Non-AD-joined Linux hosts in this lab (Rocky, the Wazuh manager) resolve DNS through OPNsense directly rather than the AD DC, avoiding an unnecessary dependency on DC uptime for basic name resolution.
+- Non-AD-joined Linux hosts in this lab (Rocky, the Wazuh manager) resolve DNS through the LAN firewall/gateway directly rather than the AD DC, avoiding an unnecessary dependency on DC uptime for basic name resolution.
