@@ -14,7 +14,7 @@ A self-hosted Wazuh SIEM deployment (manager, indexer, and dashboard) monitoring
 |---|---|---|
 | Step 1 | Wazuh Manager · Ubuntu Server, all-in-one (manager + indexer + dashboard), v4.9.2 | ✅ Complete |
 | Step 2 | Agent Rollout · Windows Server AD DC, Windows 11, Rocky Linux — all enrolled and reporting | ✅ Complete |
-| Step 3 | Vulnerability Scanning · Nessus Essentials + findings log | 🔜 In progress |
+| Step 3 | Vulnerability Scanning · Nessus Essentials + findings log | ✅ Complete |
 | Step 4 | AD Attack & Defend · Kerberoasting / pass-the-hash + detections | 🔜 Queued |
 | Step 5 | Kali → Metasploitable2 · Offensive traffic visible in Wazuh | 🔜 Queued |
 | Step 6 | Honeypot · OpenCanary, Wazuh-integrated | 🔜 Queued |
@@ -56,6 +56,38 @@ Agent versions are pinned to match the manager (`4.9.2`) — Wazuh enforces that
 
 ---
 
+## Vulnerability Scanning — Nessus
+
+Ran a full credentialed vulnerability assessment across all four lab hosts using **Nessus Essentials Plus** (Tenable for Education license), scanning from Kali via a temporary LAN-facing NIC that was removed and isolation-reverified after each scan wave.
+
+Each host went through the same four-stage sequence: host discovery → uncredentialed baseline scan → credential validation → credentialed patch audit. The credentialed patch audit stage is what actually matters — it authenticates to each host and diffs installed package/patch versions against vendor advisories. Every meaningful finding in this project came from that stage; uncredentialed scans returned almost entirely Info-level noise on hosts that turned out to have double-digit Critical/High counts once authenticated.
+
+### Results
+
+| Host | Critical (before → after) | High (before → after) | Medium (before → after) |
+|---|---|---|---|
+| Windows Server 2025 (AD DC) | 6 → 0 | 19 → 0 | — |
+| Windows 11 | 0 → 0 | 1 → 0 | — |
+| Rocky Linux 9.8 | 5 → 0 | 13 → 0 | 5 → 0 |
+| Wazuh manager | 0 → 0 | 0 → 0 | 0 → 0 |
+
+**49 findings identified across 2 scan waves and 4 hosts — 100% remediated and re-verified via credentialed re-scan.**
+
+- **Windows hosts:** all findings tied to missing Windows Updates plus a missing `EnableCertPaddingCheck` registry mitigation (CVE-2013-3900). Fixed via Windows Update + registry DWORD (64-bit and Wow6432Node paths), re-scanned clean.
+- **Rocky Linux:** kernel, glibc, glib2, openssl, and openssh findings against RockyLinux's own RLSA security advisory feed. Remediated with `dnf update -y` + reboot into the patched kernel, re-scanned clean (0 Critical/High/Medium, Info-only remaining).
+- **Wazuh manager:** clean baseline (built more recently, less time for CVEs to accumulate) aside from an expected self-signed-certificate Medium — not a remediation target for a homelab dashboard cert.
+
+### Notable problem solved — credentialed scan auth failures
+
+Both Windows and Linux credential setups initially failed authentication, and diagnosing *why* was its own finding worth documenting:
+
+- **Windows 11:** `LanmanServer` (Server service) and the File and Printer Sharing firewall group are disabled by default on a Win11 client OS, so SMB ports 139/445 weren't listening. Fixed with `Start-Service LanmanServer` + enabling the firewall group, confirmed via `nmap -p 139,445`.
+- **Windows Server:** credential validation failed because the domain was double-specified (domain in both the username field and the domain field). Fixed by using the bare admin username with domain specified separately.
+- **Linux hosts:** SSH password auth alone doesn't expose enough package/file state for a full patch audit — both hosts required `sudo` privilege elevation configured explicitly in the scan policy before the credentialed audit could run.
+
+Remediation isn't treated as done until re-verified: every host above was re-scanned post-patch to confirm the fix actually landed, not just applied.
+
+---
 ## Repo Structure
 
 ```
